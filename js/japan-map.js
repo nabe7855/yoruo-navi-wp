@@ -113,69 +113,50 @@
         });
       });
 
-      // Add region labels
       this.addRegionLabels();
     }
 
     addRegionLabels() {
-      // Remove existing labels if any
-      const existingLabels = this.container.querySelectorAll(".region-label");
+      // Remove existing SVG labels if any
+      const existingLabels =
+        this.svgElement.querySelectorAll(".region-label-text");
       existingLabels.forEach((label) => label.remove());
-
-      const existingContainer = this.container.querySelector(
-        ".region-labels-container",
-      );
-      if (existingContainer) {
-        existingContainer.remove();
-      }
 
       if (this.selectedRegion) {
         // Don't show region labels when zoomed in
         return;
       }
 
-      // Create label container
-      const labelContainer = document.createElement("div");
-      labelContainer.className = "region-labels-container";
-      labelContainer.style.position = "absolute";
-      labelContainer.style.top = "0";
-      labelContainer.style.left = "0";
-      labelContainer.style.width = "100%";
-      labelContainer.style.height = "100%";
-      labelContainer.style.pointerEvents = "none";
-      labelContainer.style.zIndex = "10";
+      // Find the group containing prefectures to append labels to
+      const prefecturesGroup = this.svgElement.querySelector(".prefectures");
+      if (!prefecturesGroup) return;
 
-      this.regions.forEach((region) => {
-        const position = this.getRegionLabelPosition(region);
+      this.regions.forEach((region, index) => {
+        const position = this.getRegionCenter(region, prefecturesGroup);
         if (!position) return;
 
-        const label = document.createElement("div");
-        label.className = "region-label";
-        label.textContent = region.name;
-        label.style.position = "absolute";
-        label.style.left = `${position.x}%`;
-        label.style.top = `${position.y}%`;
-        label.style.transform = "translate(-50%, -50%)";
-        label.style.color = "#fff";
-        label.style.fontWeight = "900";
-        label.style.fontSize = "clamp(14px, 2vw, 20px)";
-        label.style.textShadow =
-          "0 2px 8px rgba(0,0,0,0.3), 0 0 2px rgba(0,0,0,0.5)";
-        label.style.letterSpacing = "0.05em";
-        label.style.pointerEvents = "none";
-        label.style.userSelect = "none";
-        label.style.opacity = "0";
-        label.style.animation = "labelFadeIn 0.6s ease-out forwards";
-        label.style.animationDelay = `${region.labelDelay || 0}ms`;
+        // Create SVG text element
+        const text = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "text",
+        );
+        text.setAttribute("x", position.x);
+        text.setAttribute("y", position.y);
+        text.setAttribute("class", "region-label-text");
+        text.textContent = region.name;
 
-        labelContainer.appendChild(label);
+        // Adjust font size
+        text.setAttribute("font-size", "28px");
+
+        text.style.animationDelay = `${index * 50}ms`;
+
+        // Append to the same group as prefectures
+        prefecturesGroup.appendChild(text);
       });
-
-      this.container.appendChild(labelContainer);
     }
 
-    getRegionLabelPosition(region) {
-      // Calculate center position of region based on its prefectures
+    getRegionCenter(region, containerGroup) {
+      // 1. Calculate the bounding box of the region in SCREEN coordinates
       let minX = Infinity,
         minY = Infinity,
         maxX = -Infinity,
@@ -184,34 +165,39 @@
 
       region.prefectures.forEach((pref) => {
         const el = this.svgElement.querySelector(`.${pref.id}`);
-        if (el && el.getBBox) {
-          const bbox = el.getBBox();
-          minX = Math.min(minX, bbox.x);
-          minY = Math.min(minY, bbox.y);
-          maxX = Math.max(maxX, bbox.x + bbox.width);
-          maxY = Math.max(maxY, bbox.y + bbox.height);
-          found = true;
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          if (rect.width > 0 && rect.height > 0) {
+            minX = Math.min(minX, rect.left);
+            minY = Math.min(minY, rect.top);
+            maxX = Math.max(maxX, rect.right);
+            maxY = Math.max(maxY, rect.bottom);
+            found = true;
+          }
         }
       });
 
       if (!found) return null;
 
-      // Get SVG viewBox
-      const viewBox = this.svgElement.viewBox.baseVal;
-      const svgWidth = viewBox.width;
-      const svgHeight = viewBox.height;
-      const svgX = viewBox.x;
-      const svgY = viewBox.y;
+      // 2. Calculate the center point in SCREEN coordinates
+      const screenCenterX = (minX + maxX) / 2;
+      const screenCenterY = (minY + maxY) / 2;
 
-      // Calculate center
-      const centerX = (minX + maxX) / 2;
-      const centerY = (minY + maxY) / 2;
+      // 3. Convert SCREEN coordinates to SVG LOCAL coordinates
+      // Create a point for transformation
+      const pt = this.svgElement.createSVGPoint();
+      pt.x = screenCenterX;
+      pt.y = screenCenterY;
 
-      // Convert to percentage
-      const percentX = ((centerX - svgX) / svgWidth) * 100;
-      const percentY = ((centerY - svgY) / svgHeight) * 100;
-
-      return { x: percentX, y: percentY };
+      // Use the inverse of the Screen CTM to map back to the local coordinate system of the group
+      try {
+        const globalToLocalMatrix = containerGroup.getScreenCTM().inverse();
+        const localPoint = pt.matrixTransform(globalToLocalMatrix);
+        return { x: localPoint.x, y: localPoint.y };
+      } catch (e) {
+        console.error("Failed to transform coordinates", e);
+        return null; // Fallback or handle error
+      }
     }
 
     handlePrefectureClick(el) {

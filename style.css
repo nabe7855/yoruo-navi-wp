@@ -169,16 +169,30 @@ body {
 @keyframes labelFadeIn {
   from {
     opacity: 0;
-    transform: translate(-50%, -50%) translateY(10px);
   }
   to {
     opacity: 1;
-    transform: translate(-50%, -50%) translateY(0);
   }
 }
 
-.region-label {
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* SVG Text Labels */
+.region-label-text {
+  fill: #fff;
+  stroke: rgba(0, 0, 0, 0.4);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+  paint-order: stroke fill; /* Create outline effect */
+  font-weight: 900;
+  font-family: "Inter", "Noto Sans JP", sans-serif;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+  user-select: none;
+  animation: labelFadeIn 0.5s ease-out forwards;
+  opacity: 0;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.3));
+}
+
+.region-label-text:hover {
+  cursor: default;
 }
