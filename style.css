@@ -1,0 +1,184 @@
+/*
+Theme Name: 夜男ナビ (Yoruo Navi)
+Theme URI: https://yoruo-navi.com
+Description: Next.jsプロジェクトから移植した、男性ナイトワーク求人サイト用カスタムテーマ。
+Version: 1.0.0
+Author: Antigravity
+Author URI: https://github.com/nabe7855
+License: GNU General Public License v2 or later
+License URI: http://www.gnu.org/licenses/gpl-2.0.html
+Tags: custom-background, custom-logo, custom-menu, featured-images, threaded-comments, translation-ready
+Text Domain: yoruo-navi
+*/
+
+/* Basic Styles */
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #f8fafc; /* slate-50 */
+  color: #0f172a; /* slate-900 */
+  font-family: "Inter", "Noto Sans JP", Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Fallback Gradients */
+.gradient-gold {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+}
+
+.gradient-cyan {
+  background: linear-gradient(135deg, #06b6d4 0%, #22d3ee 50%, #3b82f6 100%);
+}
+
+/* Global Animations Fallback */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.8s ease-out forwards;
+}
+
+@keyframes mapFluffyEntrance {
+  0% {
+    opacity: 0;
+    transform: scale(0.9) translateY(20px);
+    filter: blur(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes labelSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes nuruttoFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.98) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-map-entrance {
+  animation: mapFluffyEntrance 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-label-in {
+  animation: labelSlideIn 1s cubic-bezier(0.22, 1, 0.36, 1)
+    calc(var(--delay, 0) * 1ms) forwards;
+  opacity: 0;
+}
+
+.animate-nurutto {
+  animation: nuruttoFadeIn 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Japan Map Styles */
+#japan-map-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+}
+
+#japan-map-container svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+#japan-map-container .prefecture {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+#japan-map-container .prefecture:hover {
+  filter: brightness(1.1);
+  stroke-width: 2;
+}
+
+/* Animate map entrance */
+#japan-map-container svg {
+  animation: mapFluffyEntrance 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Modal animations */
+@keyframes slide-in-from-bottom {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-in {
+  animation-fill-mode: both;
+}
+
+.slide-in-from-bottom-5 {
+  animation-name: slide-in-from-bottom;
+}
+
+.duration-300 {
+  animation-duration: 300ms;
+}
+
+/* Scrollbar hide utility */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Region label animations */
+@keyframes labelFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) translateY(0);
+  }
+}
+
+.region-label {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
