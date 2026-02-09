@@ -55,7 +55,8 @@ function yoruo_navi_scripts() {
 
     // Global JS
     wp_enqueue_script( 'yoruo-navi-main', get_template_directory_uri() . '/js/main.js', array(), '1.0.0', true );
-    wp_enqueue_script( 'yoruo-navi-map-data', get_template_directory_uri() . '/js/map-data.js', array(), '1.0.0', true );
+    wp_enqueue_script( 'yoruo-navi-all-municipalities', get_template_directory_uri() . '/js/all-municipalities.js', array(), '1.0.0', true );
+    wp_enqueue_script( 'yoruo-navi-map-data', get_template_directory_uri() . '/js/map-data.js', array('yoruo-navi-all-municipalities'), '1.0.0', true );
     wp_enqueue_script( 'yoruo-navi-map', get_template_directory_uri() . '/js/japan-map.js', array( 'yoruo-navi-map-data' ), '1.0.0', true );
 }
 add_action( 'wp_enqueue_scripts', 'yoruo_navi_scripts' );

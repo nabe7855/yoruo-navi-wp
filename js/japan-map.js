@@ -176,11 +176,19 @@
         const newViewBox = `${minX - paddingX} ${minY - paddingY} ${width + paddingX * 2} ${height + paddingY * 2}`;
         svg.setAttribute("viewBox", newViewBox);
 
-        // Dynamically set aspect-ratio to remove extra whitespace
-        const aspectRatio = (width + paddingX * 2) / (height + paddingY * 2);
-        this.container.style.aspectRatio = aspectRatio.toString();
-        // Ensure container doesn't force height
-        this.container.style.height = "auto";
+        // Dynamically set aspect-ratio to remove extra whitespace (Only if NOT fixed height mode)
+        if (this.container.dataset.fixedHeight !== "true") {
+          const aspectRatio = (width + paddingX * 2) / (height + paddingY * 2);
+          this.container.style.aspectRatio = aspectRatio.toString();
+          // Ensure container doesn't force height
+          this.container.style.height = "auto";
+          this.svgElement.style.height = "100%"; // Changed from commented out to 100% to fill container
+        } else {
+          // Fixed height mode (e.g. mini map in modal)
+          this.container.style.aspectRatio = "";
+          this.container.style.height = "100%";
+          this.svgElement.style.height = "100%";
+        }
 
         this.originalViewBox = newViewBox;
         return true; // Success
@@ -617,9 +625,78 @@
       }
     }
 
+    zoomToPrefecture(prefId) {
+      const el = this.svgElement.querySelector(`.${prefId}`);
+      if (!el) return;
+
+      // Helper to transform a point (reused logic could be refactored but inline for safety)
+      const transformPoint = (x, y) => {
+        const pt = this.svgElement.createSVGPoint();
+        pt.x = x;
+        pt.y = y;
+        try {
+          const screenCTM = el.getScreenCTM();
+          const rootScreenCTM = this.svgElement.getScreenCTM();
+          if (screenCTM && rootScreenCTM) {
+            const globalMatrix = rootScreenCTM.inverse().multiply(screenCTM);
+            return pt.matrixTransform(globalMatrix);
+          }
+          return pt;
+        } catch (e) {
+          return pt;
+        }
+      };
+
+      try {
+        const bbox = el.getBBox();
+        const corners = [
+          transformPoint(bbox.x, bbox.y),
+          transformPoint(bbox.x + bbox.width, bbox.y),
+          transformPoint(bbox.x, bbox.y + bbox.height),
+          transformPoint(bbox.x + bbox.width, bbox.y + bbox.height),
+        ];
+
+        let minX = Infinity,
+          minY = Infinity,
+          maxX = -Infinity,
+          maxY = -Infinity;
+        corners.forEach((p) => {
+          minX = Math.min(minX, p.x);
+          minY = Math.min(minY, p.y);
+          maxX = Math.max(maxX, p.x);
+          maxY = Math.max(maxY, p.y);
+        });
+
+        const width = maxX - minX;
+        const height = maxY - minY;
+        // Larger padding for single prefecture to give context
+        const padding = Math.max(width, height) * 0.5;
+
+        // Ensure aspect ratio of container is maintained if needed, but here we just set viewBox
+        // The container CSS handles aspect ratio issues (we removed fixed height earlier)
+
+        const newViewBox = `${minX - padding / 2} ${minY - padding / 2} ${width + padding} ${height + padding}`;
+
+        this.svgElement.style.transition =
+          "all 0.8s cubic-bezier(0.22, 1, 0.36, 1)";
+        this.svgElement.setAttribute("viewBox", newViewBox);
+
+        // Hide labels
+        const labels = this.svgElement.querySelectorAll(
+          ".region-label-text, .pref-label-text",
+        );
+        labels.forEach((l) => (l.style.opacity = "0"));
+      } catch (e) {
+        console.error("Zoom failed", e);
+      }
+    }
+
     resetZoom() {
       if (this.originalViewBox) {
         this.svgElement.setAttribute("viewBox", this.originalViewBox);
+        // Reset labels
+        const labels = this.svgElement.querySelectorAll(".region-label-text");
+        labels.forEach((l) => (l.style.opacity = "1"));
       }
     }
 
