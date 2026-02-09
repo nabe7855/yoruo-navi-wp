@@ -71,17 +71,122 @@
 
       if (!this.svgElement) return;
 
-      // Store original viewBox
-      this.originalViewBox = this.svgElement.getAttribute("viewBox");
-
       // Style SVG
       this.svgElement.style.width = "100%";
-      this.svgElement.style.height = "100%";
+      // this.svgElement.style.height = "100%"; // Removed to allow natural height based on aspect ratio
       this.svgElement.style.display = "block";
+      // Force center alignment
+      this.svgElement.setAttribute("preserveAspectRatio", "xMidYMid meet");
+
+      // Store original viewBox initially from attribute
+      this.originalViewBox = this.svgElement.getAttribute("viewBox");
 
       // Setup prefecture elements
       this.setupPrefectures();
       this.applyColors();
+
+      // Adjust viewBox to fit content tightly
+      // Use polling to handle visibility
+      let retries = 0;
+      const tryFit = () => {
+        if (this.fitMapToContainer()) {
+          // Success
+        } else if (retries < 20) {
+          retries++;
+          setTimeout(tryFit, 100);
+        }
+      };
+      // Start trying
+      setTimeout(tryFit, 0);
+    }
+
+    fitMapToContainer() {
+      const svg = this.svgElement;
+      if (!svg) return false;
+
+      // Ensure SVG is in DOM and likely rendered
+      if (!svg.isConnected || svg.clientWidth === 0) return false;
+
+      let minX = Infinity,
+        minY = Infinity,
+        maxX = -Infinity,
+        maxY = -Infinity;
+      let found = false;
+
+      const prefectures = svg.querySelectorAll(".prefecture");
+      if (prefectures.length === 0) return true;
+
+      try {
+        prefectures.forEach((el) => {
+          const bbox = el.getBBox();
+          if (bbox.width <= 0 || bbox.height <= 0) return;
+
+          // Use getScreenCTM for robust coordinate transformation to SVG root space
+          // This handles nested transforms and existing viewBox correctly
+          const corners = [
+            { x: bbox.x, y: bbox.y },
+            { x: bbox.x + bbox.width, y: bbox.y },
+            { x: bbox.x + bbox.width, y: bbox.y + bbox.height },
+            { x: bbox.x, y: bbox.y + bbox.height },
+          ];
+
+          corners.forEach((p) => {
+            const pt = svg.createSVGPoint();
+            pt.x = p.x;
+            pt.y = p.y;
+
+            let transPt = pt;
+            try {
+              const screenCTM = el.getScreenCTM();
+              const rootScreenCTM = svg.getScreenCTM();
+
+              if (screenCTM && rootScreenCTM) {
+                const globalMatrix = rootScreenCTM
+                  .inverse()
+                  .multiply(screenCTM);
+                transPt = pt.matrixTransform(globalMatrix);
+              } else {
+                // Fallback to getCTM if screen CTMs fail (e.g. not attached)
+                // though the retry loop should prevent this
+                const matrix = el.getCTM();
+                if (matrix) transPt = pt.matrixTransform(matrix);
+              }
+            } catch (e) {
+              // Ignore calculation errors
+            }
+
+            minX = Math.min(minX, transPt.x);
+            minY = Math.min(minY, transPt.y);
+            maxX = Math.max(maxX, transPt.x);
+            maxY = Math.max(maxY, transPt.y);
+          });
+          found = true;
+        });
+      } catch (e) {
+        return false;
+      }
+
+      if (found && minX !== Infinity) {
+        // Add moderate padding (5%)
+        const width = maxX - minX;
+        const height = maxY - minY;
+        const paddingX = width * 0.05;
+        const paddingY = height * 0.05;
+
+        const newViewBox = `${minX - paddingX} ${minY - paddingY} ${width + paddingX * 2} ${height + paddingY * 2}`;
+        svg.setAttribute("viewBox", newViewBox);
+
+        // Dynamically set aspect-ratio to remove extra whitespace
+        const aspectRatio = (width + paddingX * 2) / (height + paddingY * 2);
+        this.container.style.aspectRatio = aspectRatio.toString();
+        // Ensure container doesn't force height
+        this.container.style.height = "auto";
+
+        this.originalViewBox = newViewBox;
+        return true; // Success
+      }
+
+      return false; // Not ready
     }
 
     setupPrefectures() {
@@ -155,6 +260,69 @@
       });
     }
 
+    addPrefectureLabels(region) {
+      // Remove existing pref labels
+      const existingLabels =
+        this.svgElement.querySelectorAll(".pref-label-text");
+      existingLabels.forEach((label) => label.remove());
+
+      if (!region) return;
+
+      const prefecturesGroup = this.svgElement.querySelector(".prefectures");
+      if (!prefecturesGroup) return;
+
+      region.prefectures.forEach((pref, index) => {
+        const el = this.svgElement.querySelector(`.${pref.id}`);
+        if (!el) return;
+
+        const position = this.getPrefectureCenter(el, prefecturesGroup);
+        if (!position) return;
+
+        // Create SVG text element
+        const text = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "text",
+        );
+        text.setAttribute("x", position.x);
+        text.setAttribute("y", position.y);
+        text.setAttribute("class", "pref-label-text");
+        text.textContent = pref.name;
+
+        // Smaller font size for individual prefectures
+        // Since we are zoomed in, this will appear readable
+        // We might need to scale it inversely to the zoom level if we want constant size
+        // But simple fixed size often works well with SVG scaling (it gets bigger as we zoom)
+        // Let's try a small base size.
+        text.setAttribute("font-size", "10px");
+
+        text.style.animationDelay = `${index * 30}ms`;
+
+        prefecturesGroup.appendChild(text);
+      });
+    }
+
+    getPrefectureCenter(el, containerGroup) {
+      if (!el) return null;
+
+      const rect = el.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return null;
+
+      const screenCenterX = rect.left + rect.width / 2;
+      const screenCenterY = rect.top + rect.height / 2;
+
+      const pt = this.svgElement.createSVGPoint();
+      pt.x = screenCenterX;
+      pt.y = screenCenterY;
+
+      try {
+        const globalToLocalMatrix = containerGroup.getScreenCTM().inverse();
+        const localPoint = pt.matrixTransform(globalToLocalMatrix);
+        return { x: localPoint.x, y: localPoint.y };
+      } catch (e) {
+        return null; // Fallback
+      }
+    }
+
     getRegionCenter(region, containerGroup) {
       // 1. Calculate the bounding box of the region in SCREEN coordinates
       let minX = Infinity,
@@ -184,23 +352,21 @@
       const screenCenterY = (minY + maxY) / 2;
 
       // 3. Convert SCREEN coordinates to SVG LOCAL coordinates
-      // Create a point for transformation
       const pt = this.svgElement.createSVGPoint();
       pt.x = screenCenterX;
       pt.y = screenCenterY;
 
-      // Use the inverse of the Screen CTM to map back to the local coordinate system of the group
       try {
         const globalToLocalMatrix = containerGroup.getScreenCTM().inverse();
         const localPoint = pt.matrixTransform(globalToLocalMatrix);
         return { x: localPoint.x, y: localPoint.y };
       } catch (e) {
-        console.error("Failed to transform coordinates", e);
-        return null; // Fallback or handle error
+        return null;
       }
     }
 
     handlePrefectureClick(el) {
+      // ... (unchanged)
       // Extract prefecture ID from class
       const classList = Array.from(el.classList);
       const prefId = classList.find(
@@ -262,7 +428,17 @@
         const isRegionSelected =
           this.selectedRegion && this.selectedRegion.id === region.id;
 
-        region.prefectures.forEach((pref) => {
+        // Pre-generate color variants for this region if selected
+        let colorVariants = [];
+        if (isRegionSelected) {
+          const baseColor = REGION_COLORS[region.id];
+          colorVariants = this.generateColorVariants(
+            baseColor,
+            region.prefectures.length,
+          );
+        }
+
+        region.prefectures.forEach((pref, index) => {
           const el = Array.from(prefElements).find((e) =>
             e.classList.contains(pref.id),
           );
@@ -271,8 +447,14 @@
             if (this.selectedRegion) {
               // Region selected mode
               if (isRegionSelected) {
-                el.style.fill = REGION_COLORS.selected;
+                // Assign variant color based on index
+                // Use modulus to cycle through variants if fewer variants than prefectures
+                el.style.fill = colorVariants[index % colorVariants.length];
                 el.style.pointerEvents = "auto";
+
+                // Keep stroke white but maybe slightly thicker
+                el.style.stroke = "#fff";
+                el.style.strokeWidth = "1.5";
               } else {
                 el.style.fill = "#f1f5f9"; // slate-100 (inactive)
                 el.style.pointerEvents = "none";
@@ -281,6 +463,7 @@
               // Overview mode - color by region
               el.style.fill = REGION_COLORS[region.id] || "#cbd5e1";
               el.style.pointerEvents = "auto";
+              el.style.strokeWidth = "1";
             }
           }
         });
@@ -288,6 +471,59 @@
 
       // Update labels
       this.addRegionLabels();
+      this.addPrefectureLabels(this.selectedRegion);
+    }
+
+    generateColorVariants(baseColor, count) {
+      // Simple logic to generate lighter/darker shades of a hex color
+      // baseColor is expected to be hex string like "#3b82f6"
+
+      const variants = [];
+
+      // Helper to adjust brightness
+      // p: positive for lighter, negative for darker
+      const adjustBrightness = (hex, p) => {
+        // Strip hash
+        hex = hex.replace("#", "");
+
+        let r = parseInt(hex.substring(0, 2), 16);
+        let g = parseInt(hex.substring(2, 4), 16);
+        let b = parseInt(hex.substring(4, 6), 16);
+
+        // Calculate new colors
+        // If p > 0, we mix with white (255)
+        // If p < 0, we mix with black (0)
+
+        if (p > 0) {
+          // Lighten
+          r = Math.round(r + (255 - r) * p);
+          g = Math.round(g + (255 - g) * p);
+          b = Math.round(b + (255 - b) * p);
+        } else {
+          // Darken
+          r = Math.round(r * (1 + p));
+          g = Math.round(g * (1 + p));
+          b = Math.round(b * (1 + p));
+        }
+
+        const toHex = (c) => {
+          const hex = c.toString(16);
+          return hex.length === 1 ? "0" + hex : hex;
+        };
+
+        return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+      };
+
+      // Generate a range of variations
+      // We want distinct enough colors
+      variants.push(baseColor); // Original
+      variants.push(adjustBrightness(baseColor, 0.2)); // Lighter
+      variants.push(adjustBrightness(baseColor, -0.1)); // Slightly darker
+      variants.push(adjustBrightness(baseColor, 0.4)); // Very light
+      variants.push(adjustBrightness(baseColor, -0.2)); // Darker
+      variants.push(adjustBrightness(baseColor, 0.1)); // Very slightly lighter
+
+      return variants;
     }
 
     zoomToRegion(region) {
@@ -297,22 +533,87 @@
         maxY = -Infinity;
       let found = false;
 
+      // Get the transformation matrix from the element to the SVG root
+      // This is crucial because the map group has a transform applied
+      const svgRoot = this.svgElement;
+
       region.prefectures.forEach((pref) => {
         const el = this.svgElement.querySelector(`.${pref.id}`);
         if (el && el.getBBox) {
           const bbox = el.getBBox();
-          minX = Math.min(minX, bbox.x);
-          minY = Math.min(minY, bbox.y);
-          maxX = Math.max(maxX, bbox.x + bbox.width);
-          maxY = Math.max(maxY, bbox.y + bbox.height);
+
+          // Helper to transform a point
+          const transformPoint = (x, y) => {
+            const pt = svgRoot.createSVGPoint();
+            pt.x = x;
+            pt.y = y;
+            // Get transformation matrix from element to SVG root
+            try {
+              const matrix = el.getCTM();
+              // Since getCTM returns mapping to viewport (screen), we might need logic relative to SVG root
+              // But viewBox is in root user coordinate system.
+              // Usually el.getCTM() maps to client coordinates if processed naively,
+              // but we want coordinates in the SVG's root user space.
+              // Actually, getCTM() returns the matrix transforming the element's coordinate system
+              // to the SVG viewport's coordinate system.
+              // If the SVG has no viewBox, viewport == user space.
+              // If SVG has viewBox, we need to map via screenCTM inverse?
+
+              // Let's use more robust approach:
+              // We need coordinates in the SVG root system (where viewBox is defined).
+              // el.getScreenCTM() -> transforms local to screen
+              // svgRoot.getScreenCTM().inverse() -> transforms screen to svg root
+
+              const screenCTM = el.getScreenCTM();
+              const rootScreenCTM = svgRoot.getScreenCTM();
+
+              if (screenCTM && rootScreenCTM) {
+                const globalMatrix = rootScreenCTM
+                  .inverse()
+                  .multiply(screenCTM);
+                return pt.matrixTransform(globalMatrix);
+              }
+              return pt; // Fallback
+            } catch (e) {
+              return pt;
+            }
+          };
+
+          // Transform all 4 corners of bbox to account for rotation/scale
+          const corners = [
+            transformPoint(bbox.x, bbox.y),
+            transformPoint(bbox.x + bbox.width, bbox.y),
+            transformPoint(bbox.x, bbox.y + bbox.height),
+            transformPoint(bbox.x + bbox.width, bbox.y + bbox.height),
+          ];
+
+          corners.forEach((p) => {
+            minX = Math.min(minX, p.x);
+            minY = Math.min(minY, p.y);
+            maxX = Math.max(maxX, p.x);
+            maxY = Math.max(maxY, p.y);
+          });
+
           found = true;
         }
       });
 
       if (found) {
-        const padding = 20;
-        const viewBox = `${minX - padding} ${minY - padding} ${maxX - minX + padding * 2} ${maxY - minY + padding * 2}`;
+        // Add padding
+        const width = maxX - minX;
+        const height = maxY - minY;
+        const paddingX = width * 0.1; // 10% padding
+        const paddingY = height * 0.1;
+
+        const viewBox = `${minX - paddingX} ${minY - paddingY} ${width + paddingX * 2} ${height + paddingY * 2}`;
+
+        // Animate viewBox change (simple implementation)
+        this.svgElement.style.transition = "all 0.5s ease";
         this.svgElement.setAttribute("viewBox", viewBox);
+
+        // Hide regional labels immediately
+        const labels = this.svgElement.querySelectorAll(".region-label-text");
+        labels.forEach((l) => (l.style.opacity = "0"));
       }
     }
 

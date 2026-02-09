@@ -175,8 +175,8 @@ body {
   }
 }
 
-/* SVG Text Labels */
-.region-label-text {
+.region-label-text,
+.pref-label-text {
   fill: #fff;
   stroke: rgba(0, 0, 0, 0.4);
   stroke-width: 4px;
@@ -193,6 +193,7 @@ body {
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.3));
 }
 
-.region-label-text:hover {
+.region-label-text:hover,
+.pref-label-text:hover {
   cursor: default;
 }

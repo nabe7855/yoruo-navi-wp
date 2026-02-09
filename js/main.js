@@ -91,11 +91,13 @@ document.addEventListener("DOMContentLoaded", function () {
         modalBody.appendChild(template.content.cloneNode(true));
 
         // Initialize Japan Map if it's the map modal
-        if (
-          modalType === "map" &&
-          typeof window.reinitJapanMap === "function"
-        ) {
-          window.reinitJapanMap();
+        if (modalType === "map") {
+          // Use setTimeout ensure DOM is ready
+          setTimeout(() => {
+            if (typeof window.reinitJapanMap === "function") {
+              window.reinitJapanMap();
+            }
+          }, 50);
         }
 
         // Sync modal inputs with existing hidden inputs in main form
@@ -167,29 +169,25 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 
-  // Initialize Japan Map when map modal is opened
+  // Initialize Japan Map Logic
   let japanMapInstance = null;
 
-  const mapModalTrigger = document.querySelector('[data-modal="map"]');
-  if (mapModalTrigger) {
-    mapModalTrigger.addEventListener("click", () => {
-      // Wait for modal to be visible
-      setTimeout(() => {
-        if (!japanMapInstance) {
-          japanMapInstance = new window.JapanMap("japan-map-container");
+  // Define global re-init function
+  window.reinitJapanMap = function () {
+    // Always create new instance as DOM is recreated
+    const container = document.getElementById("japan-map-container");
+    if (container) {
+      // Check if JapanMap is loaded
+      if (typeof window.JapanMap !== "undefined") {
+        japanMapInstance = new window.JapanMap("japan-map-container");
 
-          // Listen for prefecture selection
-          const mapContainer = document.getElementById("japan-map-container");
-          if (mapContainer) {
-            mapContainer.addEventListener("prefectureSelected", (e) => {
-              const pref = e.detail;
-              showMunicipalityModal(pref);
-            });
-          }
-        }
-      }, 100);
-    });
-  }
+        container.addEventListener("prefectureSelected", (e) => {
+          const pref = e.detail;
+          showMunicipalityModal(pref);
+        });
+      }
+    }
+  };
 
   // Municipality Modal
   function showMunicipalityModal(prefecture) {

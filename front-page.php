@@ -331,9 +331,9 @@ $prefectures = get_yoruo_prefectures();
 </template>
 
 <template id="template-map">
-    <div class="w-full h-full flex flex-col bg-slate-50">
+    <div class="w-full flex flex-col bg-slate-50">
         <!-- Map Container -->
-        <div id="japan-map-container" class="flex-1 relative overflow-hidden bg-slate-50/50 rounded-3xl">
+        <div id="japan-map-container" class="w-full relative overflow-hidden bg-slate-50/50 rounded-3xl">
             <!-- Japan Map will be rendered here -->
         </div>
         
