@@ -381,7 +381,7 @@
         (c) =>
           c !== "prefecture" &&
           c !== "geolonia-svg-map-prefecture" &&
-          !REGION_IDS.includes(c),
+          (!REGION_IDS.includes(c) || c === "hokkaido"),
       );
 
       if (!prefId) return;

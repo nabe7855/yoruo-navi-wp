@@ -10,6 +10,97 @@ $keyword = isset($_GET['keyword']) ? sanitize_text_field($_GET['keyword']) : '';
 $selected_pref = isset($_GET['pref']) ? sanitize_text_field($_GET['pref']) : '';
 $selected_cats = isset($_GET['category']) ? (array)$_GET['category'] : array();
 $selected_tags = isset($_GET['tags']) ? (array)$_GET['tags'] : array();
+$selected_state = isset($_GET['state']) ? sanitize_text_field($_GET['state']) : '';
+$selected_munis = isset($_GET['muni']) ? (array)$_GET['muni'] : array();
+$selected_salary = isset($_GET['salary']) ? sanitize_text_field($_GET['salary']) : '';
+
+// ... Modify Query if needed ...
+global $wp_query;
+$args = $wp_query->query_vars;
+
+$meta_query = isset($args['meta_query']) ? (array)$args['meta_query'] : array();
+
+$tax_query = array('relation' => 'AND');
+
+// Area Filter (Taxonomy: job_area)
+if (!empty($selected_munis)) {
+    $tax_query[] = array(
+        'taxonomy' => 'job_area',
+        'field'    => 'name',
+        'terms'    => $selected_munis,
+        'operator' => 'IN',
+    );
+} elseif ($selected_pref) {
+    $tax_query[] = array(
+        'taxonomy' => 'job_area',
+        'field'    => 'name',
+        'terms'    => array($selected_pref),
+        'operator' => 'IN',
+    );
+} elseif ($selected_state) {
+    // Region mapping
+    $region_map = [
+        'hokkaido' => ['北海道'],
+        'tohoku'   => ['青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県'],
+        'kanto'    => ['茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県'],
+        'chubu'    => ['新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県', '岐阜県', '静岡県', '愛知県'],
+        'kansai'   => ['三重県', '滋賀県', '京都府', '大阪府', '兵庫県', '奈良県', '和歌山県'],
+        'chugoku'  => ['鳥取県', '島根県', '岡山県', '広島県', '山口県'],
+        'shikoku'  => ['徳島県', '香川県', '愛媛県', '高知県'],
+        'kyushu'   => ['福岡県', '佐賀県', '長崎県', '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県'],
+    ];
+    
+    if (isset($region_map[$selected_state])) {
+        $tax_query[] = array(
+            'taxonomy' => 'job_area',
+            'field'    => 'name',
+            'terms'    => $region_map[$selected_state],
+            'operator' => 'IN',
+        );
+    }
+}
+
+// Salary Filter
+if ($selected_salary) {
+    $meta_query[] = array(
+        'key' => 'salary',
+        'value' => $selected_salary,
+        'compare' => '='
+    );
+}
+
+
+// Tags Filter (Taxonomy: job_tag)
+if (!empty($selected_tags)) {
+    $tax_query[] = array(
+        'taxonomy' => 'job_tag',
+        'field'    => 'name',
+        'terms'    => $selected_tags,
+        'operator' => 'IN',
+    );
+}
+
+// Category Filter (Taxonomy: job_category)
+if (!empty($selected_cats)) {
+    $tax_query[] = array(
+        'taxonomy' => 'job_category',
+        'field'    => 'name',
+        'terms'    => $selected_cats,
+        'operator' => 'IN',
+    );
+}
+
+if (!empty($meta_query)) {
+    $args['meta_query'] = $meta_query;
+    $args['meta_query']['relation'] = 'AND';
+}
+if (count($tax_query) > 1) {
+    $args['tax_query'] = $tax_query;
+}
+
+if (!empty($meta_query) || count($tax_query) > 1) {
+    query_posts($args);
+}
 
 // Build Breadcrumbs or Title
 $title = $keyword ? '"' . $keyword . '" の検索結果' : '求人一覧';

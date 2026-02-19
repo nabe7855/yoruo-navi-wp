@@ -37,6 +37,13 @@ add_action( 'after_setup_theme', 'yoruo_navi_setup' );
 // Include Theme Data
 require_once get_template_directory() . '/theme-data.php';
 
+// Include Core Setup (Roles, CPTs, Taxonomies)
+require_once get_template_directory() . '/inc/core-setup.php';
+
+// Include Admin Customizations
+require_once get_template_directory() . '/inc/admin-customizations.php';
+
+
 /**
  * Enqueue scripts and styles.
  */
@@ -147,79 +154,3 @@ function yoruo_navi_tailwind_config() {
     <?php
 }
 add_action( 'wp_head', 'yoruo_navi_tailwind_config' );
-
-/**
- * Register Custom Post Type: Job
- */
-function yoruo_navi_register_job_cpt() {
-    $labels = array(
-        'name'                  => _x( '求人', 'Post Type General Name', 'yoruo-navi' ),
-        'singular_name'         => _x( '求人', 'Post Type Singular Name', 'yoruo-navi' ),
-        'menu_name'             => __( '求人管理', 'yoruo-navi' ),
-        'all_items'             => __( '求人一覧', 'yoruo-navi' ),
-        'add_new_item'          => __( '新規求人追加', 'yoruo-navi' ),
-        'add_new'               => __( '新規追加', 'yoruo-navi' ),
-        'edit_item'             => __( '求人を編集', 'yoruo-navi' ),
-        'update_item'           => __( '求人を更新', 'yoruo-navi' ),
-        'view_item'             => __( '求人を表示', 'yoruo-navi' ),
-        'search_items'          => __( '求人を検索', 'yoruo-navi' ),
-    );
-    $args = array(
-        'label'                 => __( '求人', 'yoruo-navi' ),
-        'labels'                => $labels,
-        'supports'              => array( 'title', 'editor', 'thumbnail', 'excerpt', 'custom-fields' ),
-        'taxonomies'            => array( 'job_category', 'job_area', 'job_tag' ),
-        'hierarchical'          => false,
-        'public'                => true,
-        'show_ui'               => true,
-        'show_in_menu'          => true,
-        'menu_position'         => 5,
-        'menu_icon'             => 'dashicons-businessman',
-        'show_in_admin_bar'     => true,
-        'show_in_nav_menus'     => true,
-        'can_export'            => true,
-        'has_archive'           => true,
-        'exclude_from_search'   => false,
-        'publicly_queryable'    => true,
-        'capability_type'       => 'page',
-        'show_in_rest'          => true,
-    );
-    register_post_type( 'job', $args );
-}
-add_action( 'init', 'yoruo_navi_register_job_cpt', 0 );
-
-/**
- * Register Taxonomies
- */
-function yoruo_navi_register_taxonomies() {
-    // Job Category
-    register_taxonomy( 'job_category', array( 'job' ), array(
-        'hierarchical'      => true,
-        'labels'            => array( 'name' => '職種' ),
-        'show_ui'           => true,
-        'show_admin_column' => true,
-        'query_var'         => true,
-        'show_in_rest'      => true,
-    ) );
-
-    // Job Area (Area/Prefecture)
-    register_taxonomy( 'job_area', array( 'job' ), array(
-        'hierarchical'      => true,
-        'labels'            => array( 'name' => 'エリア' ),
-        'show_ui'           => true,
-        'show_admin_column' => true,
-        'query_var'         => true,
-        'show_in_rest'      => true,
-    ) );
-
-    // Job Tags
-    register_taxonomy( 'job_tag', array( 'job' ), array(
-        'hierarchical'      => false,
-        'labels'            => array( 'name' => '特徴・タグ' ),
-        'show_ui'           => true,
-        'show_admin_column' => true,
-        'query_var'         => true,
-        'show_in_rest'      => true,
-    ) );
-}
-add_action( 'init', 'yoruo_navi_register_taxonomies', 0 );

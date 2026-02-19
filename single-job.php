@@ -9,19 +9,32 @@ while ( have_posts() ) :
     the_post();
     
     // Get Job meta
-    $area = get_post_meta(get_the_ID(), 'area', true);
-    $city = get_post_meta(get_the_ID(), 'city', true);
-    $salary = get_post_meta(get_the_ID(), 'salary', true);
-    $employer = get_post_meta(get_the_ID(), 'employer_name', true);
-    $qualifications = get_post_meta(get_the_ID(), 'qualifications', true);
-    $access = get_post_meta(get_the_ID(), 'access_info', true);
-    $salary_details = get_post_meta(get_the_ID(), 'salary_details', true);
-    $hours = get_post_meta(get_the_ID(), 'working_hours', true);
-    $holidays = get_post_meta(get_the_ID(), 'holidays', true);
-    $benefits = get_post_meta(get_the_ID(), 'benefits', true);
-    $employment_type = get_post_meta(get_the_ID(), 'employment_type', true);
+    $job_id = get_the_ID();
+    $author_id = get_the_author_meta('ID');
     
-    $categories = wp_get_post_terms(get_the_ID(), 'job_category', array('fields' => 'names'));
+    // Taxonomies
+    $areas = wp_get_post_terms($job_id, 'job_area', array('fields' => 'names'));
+    $area_pref = !empty($areas) ? $areas[0] : '';
+    
+    // Meta
+    $salary_min = get_post_meta($job_id, '_salary_min', true);
+    $salary_max = get_post_meta($job_id, '_salary_max', true);
+    $salary_type = get_post_meta($job_id, '_salary_type', true);
+    $salary_label = ($salary_type === 'hourly' ? '時給' : ($salary_type === 'daily' ? '日給' : '月給'));
+    $salary = $salary_label . ' ' . number_format($salary_min) . '円〜';
+    
+    $employer = get_user_meta($author_id, '_store_name', true) ?: get_the_author_meta('display_name');
+    
+    $qualifications = get_post_meta($job_id, '_qualifications', true);
+    $access = get_post_meta($job_id, '_access_info', true);
+    $salary_details = get_post_meta($job_id, '_salary_details', true);
+    $hours = get_post_meta($job_id, '_working_hours', true);
+    $holidays = get_post_meta($job_id, '_holidays', true);
+    $benefits = get_post_meta($job_id, '_benefits', true);
+    $employment_type = get_post_meta($job_id, '_employment_type', true);
+    
+    $categories = wp_get_post_terms($job_id, 'job_category', array('fields' => 'names'));
+
 ?>
 
 <div class="bg-slate-50 min-h-screen">
@@ -68,19 +81,49 @@ while ( have_posts() ) :
                                 </div>
                                 <div>
                                     <span class="block text-[9px] md:text-[10px] text-slate-400 font-black uppercase mb-1 tracking-[0.2em]">勤務地</span>
-                                    <span class="text-sm md:text-lg font-black text-slate-700"><?php echo esc_html($area . ' ' . $city); ?></span>
+                                    <span class="text-sm md:text-lg font-black text-slate-700"><?php echo esc_html($area_pref); ?></span>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="relative mb-12 group rounded-[2rem] overflow-hidden shadow-2xl h-[300px] md:h-[500px]">
-                            <?php if (has_post_thumbnail()) : the_post_thumbnail('full', ['class' => 'w-full h-full object-cover group-hover:scale-105 transition-transform duration-[2000ms]']); else : ?>
-                                <img src="https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&q=80&w=1600" class="w-full h-full object-cover">
-                            <?php endif; ?>
-                            <div class="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/60 to-transparent flex items-end p-8">
-                                <p class="text-white font-black text-sm md:text-lg drop-shadow-md"><?php echo esc_html($employer); ?> の現場写真</p>
+                        <?php 
+                        $job_images = get_post_meta($job_id, '_job_images', true);
+                        if (!empty($job_images) && is_array($job_images)) : ?>
+                            <div class="relative mb-12 -mx-4 md:mx-0 overflow-hidden">
+                                <div class="flex flex-nowrap overflow-x-auto gap-4 px-4 md:px-0 pb-6 snap-x snap-mandatory no-scrollbar" style="scrollbar-width: none; -ms-overflow-style: none;">
+                                    <?php foreach ($job_images as $idx => $img_id) : 
+                                        $full_url = wp_get_attachment_image_url($img_id, 'full');
+                                        if ($full_url) : ?>
+                                        <div class="relative flex-none w-[85%] md:w-[70%] lg:w-[60%] aspect-[16/10] rounded-[2rem] overflow-hidden shadow-xl snap-center bg-slate-100 border border-slate-100">
+                                            <img src="<?php echo esc_url($full_url); ?>" class="w-full h-full object-contain bg-slate-900/5 transition-transform duration-700 hover:scale-[1.02]">
+                                            <div class="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/50 to-transparent flex items-end p-6 md:p-8 pointer-events-none">
+                                                <p class="text-white font-black text-xs md:text-sm drop-shadow-md tracking-widest uppercase">
+                                                    <?php echo esc_html($employer); ?> 写真 #<?php echo ($idx + 1); ?>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    <?php endif; endforeach; ?>
+                                </div>
+                                <!-- Scroll Hint -->
+                                <div class="flex items-center justify-center gap-2 mt-2">
+                                    <div class="px-4 py-1.5 bg-slate-100 text-slate-400 text-[10px] font-black rounded-full tracking-widest uppercase flex items-center gap-2">
+                                        <i class="fas fa-arrows-alt-h"></i> 横にスクロールできます
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+                            <style>
+                                .no-scrollbar::-webkit-scrollbar { display: none; }
+                            </style>
+                        <?php else : ?>
+                            <div class="relative mb-12 group rounded-[2rem] overflow-hidden shadow-2xl h-[300px] md:h-[500px]">
+                                <?php if (has_post_thumbnail()) : the_post_thumbnail('full', ['class' => 'w-full h-full object-cover group-hover:scale-105 transition-transform duration-[2000ms]']); else : ?>
+                                    <img src="https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&q=80&w=1600" class="w-full h-full object-cover">
+                                <?php endif; ?>
+                                <div class="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/60 to-transparent flex items-end p-8">
+                                    <p class="text-white font-black text-sm md:text-lg drop-shadow-md"><?php echo esc_html($employer); ?> の現場写真</p>
+                                </div>
+                            </div>
+                        <?php endif; ?>
 
                         <div class="prose prose-slate max-w-none">
                             <h3 class="text-xl md:text-3xl font-black text-slate-900 flex items-center mb-8 gap-4">
@@ -147,10 +190,10 @@ while ( have_posts() ) :
                         </div>
 
                         <div class="space-y-4 mb-10">
-                            <button class="w-full py-6 gradient-gold hover:brightness-110 text-slate-900 text-xl font-black rounded-3xl transition transform active:scale-[0.97] shadow-2xl shadow-amber-500/30 flex items-center justify-center group">
+                            <a href="<?php echo esc_url(site_url('/apply/?job_id=' . get_the_ID())); ?>" class="w-full py-6 gradient-gold hover:brightness-110 text-slate-900 text-xl font-black rounded-3xl transition transform active:scale-[0.97] shadow-2xl shadow-amber-500/30 flex items-center justify-center group">
                                 <span>応募画面へ進む</span>
                                 <i class="fas fa-chevron-right ml-2 group-hover:translate-x-1 transition-transform"></i>
-                            </button>
+                            </a>
                             <button class="w-full py-5 bg-emerald-500 hover:bg-emerald-600 text-white text-lg font-black rounded-3xl transition transform active:scale-[0.97] shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-3">
                                 <i class="fab fa-line text-2xl"></i>
                                 <span>LINEで質問する</span>

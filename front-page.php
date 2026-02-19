@@ -5,27 +5,55 @@
 
 get_header();
 
-// Mock Slider Data
-$slides = [
-    [
-        'image' => 'https://images.unsplash.com/photo-1566417713940-fe7c737a9ef2?auto=format&fit=crop&q=80&w=1600',
-        'title' => '稼げる環境、ここにあり。',
-        'subtitle' => '新宿・六本木・銀座。主要エリアの求人を網羅。',
-        'badge' => 'AREA RANKING #1',
-    ],
-    [
-        'image' => 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&q=80&w=1600',
-        'title' => '未経験から、プロの黒服へ。',
-        'subtitle' => 'キャリアアップを夜男ナビが徹底サポート。',
-        'badge' => 'EDUCATION SUPPORT',
-    ],
-    [
-        'image' => 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&q=80&w=1600',
-        'title' => '入社お祝い金キャンペーン',
-        'subtitle' => '今なら最大50,000円を即日プレゼント中。',
-        'badge' => 'LIMITED CAMPAIGN',
-    ],
-];
+// Fetch Banners from Slider CPT
+$slider_query = new WP_Query(array(
+    'post_type'      => 'slider',
+    'posts_per_page' => -1,
+    'orderby'        => 'menu_order',
+    'order'          => 'ASC',
+));
+
+$slides = array();
+if ($slider_query->have_posts()) {
+    while ($slider_query->have_posts()) {
+        $slider_query->the_post();
+        $slides[] = array(
+            'image'    => get_the_post_thumbnail_url(get_the_ID(), 'full') ?: 'https://images.unsplash.com/photo-1566417713940-fe7c737a9ef2?auto=format&fit=crop&q=80&w=1600',
+            'title'    => get_the_title(),
+            'subtitle' => get_post_meta(get_the_ID(), '_slider_subtitle', true),
+            'badge'    => get_post_meta(get_the_ID(), '_slider_badge', true),
+            'link'     => get_post_meta(get_the_ID(), '_slider_link', true),
+        );
+    }
+    wp_reset_postdata();
+}
+
+// Fallback to Mock Slider Data if no custom banners are found
+if (empty($slides)) {
+    $slides = [
+        [
+            'image' => 'https://images.unsplash.com/photo-1566417713940-fe7c737a9ef2?auto=format&fit=crop&q=80&w=1600',
+            'title' => '稼げる環境、ここにあり。',
+            'subtitle' => '新宿・六本木・銀座。主要エリアの求人を網羅。',
+            'badge' => 'AREA RANKING #1',
+            'link'  => home_url('/jobs/'),
+        ],
+        [
+            'image' => 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&q=80&w=1600',
+            'title' => '未経験から、プロの黒服へ。',
+            'subtitle' => 'キャリアアップを夜男ナビが徹底サポート。',
+            'badge' => 'EDUCATION SUPPORT',
+            'link'  => home_url('/matcher/'),
+        ],
+        [
+            'image' => 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&q=80&w=1600',
+            'title' => '入社お祝い金キャンペーン',
+            'subtitle' => '今なら最大50,000円を即日プレゼント中。',
+            'badge' => 'LIMITED CAMPAIGN',
+            'link'  => '#',
+        ],
+    ];
+}
 
 // Data from theme-data.php
 $categories = get_yoruo_categories();
@@ -43,21 +71,28 @@ $prefectures = get_yoruo_prefectures();
             <div id="main-slider" class="relative flex items-center justify-center w-full aspect-[21/9] md:aspect-[21/7] max-h-[600px]">
                 <div class="slider-track flex transition-transform duration-700 ease-out h-full items-center">
                     <?php foreach ($slides as $index => $slide) : ?>
-                        <div class="slider-item relative flex-shrink-0 h-full px-1 md:px-2 transition-all duration-700 ease-out cursor-pointer" style="width: 75%;">
+                        <a href="<?php echo esc_url($slide['link'] ?: '#'); ?>" class="slider-item relative flex-shrink-0 h-full px-1 md:px-2 transition-all duration-700 ease-out cursor-pointer" style="width: 75%;">
                             <div class="relative w-full h-full rounded-lg md:rounded-[1.5rem] overflow-hidden shadow-lg border border-slate-200">
                                 <img src="<?php echo $slide['image']; ?>" alt="<?php echo $slide['title']; ?>" class="w-full h-full object-cover">
                                 <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-3 md:p-8 text-left">
-                                    <div class="mb-0.5 md:mb-1">
-                                        <span class="inline-block px-1.5 py-0.5 bg-amber-500 text-slate-900 text-[7px] md:text-[10px] font-black rounded uppercase tracking-widest">
-                                            <?php echo $slide['badge']; ?>
-                                        </span>
-                                    </div>
-                                    <h2 class="text-[10px] sm:text-base md:text-3xl font-black text-white leading-tight">
-                                        <?php echo $slide['title']; ?>
+                                    <?php if (!empty($slide['badge'])) : ?>
+                                        <div class="mb-0.5 md:mb-1">
+                                            <span class="inline-block px-1.5 py-0.5 bg-amber-500 text-slate-900 text-[7px] md:text-[10px] font-black rounded uppercase tracking-widest">
+                                                <?php echo esc_html($slide['badge']); ?>
+                                            </span>
+                                        </div>
+                                    <?php endif; ?>
+                                    <h2 class="text-[10px] sm:text-base md:text-3xl font-black text-white leading-tight mb-1">
+                                        <?php echo esc_html($slide['title']); ?>
                                     </h2>
+                                    <?php if (!empty($slide['subtitle'])) : ?>
+                                        <p class="text-[8px] sm:text-xs md:text-sm text-white/80 font-bold hidden sm:block">
+                                            <?php echo esc_html($slide['subtitle']); ?>
+                                        </p>
+                                    <?php endif; ?>
                                 </div>
                             </div>
-                        </div>
+                        </a>
                     <?php endforeach; ?>
                 </div>
                 <button class="slider-prev absolute left-[3%] md:left-[10%] lg:left-[20%] z-30 w-8 h-8 md:w-12 md:h-12 rounded bg-black/40 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/60 transition-all active:scale-90">
@@ -106,8 +141,10 @@ $prefectures = get_yoruo_prefectures();
                         <i class="fas fa-compass text-cyan-500"></i> MASTER GUIDE
                     </h3>
                     <div class="grid grid-cols-1 gap-4 relative z-10">
-                        <?php foreach ($guides as $guide) : ?>
-                            <button class="group relative p-5 rounded-3xl border border-slate-100 bg-gradient-to-br from-white to-slate-50 text-left overflow-hidden transition-all hover:scale-[1.02] hover:border-cyan-200 hover:shadow-lg active:scale-[0.98] shadow-sm flex items-center gap-5">
+                        <?php foreach ($guides as $guide) : 
+                            $trigger_class = ($guide['title'] === '適職タイプ診断') ? 'matcher-trigger' : '';
+                        ?>
+                            <button class="<?php echo $trigger_class; ?> group relative p-5 rounded-3xl border border-slate-100 bg-gradient-to-br from-white to-slate-50 text-left overflow-hidden transition-all hover:scale-[1.02] hover:border-cyan-200 hover:shadow-lg active:scale-[0.98] shadow-sm flex items-center gap-5">
                                 <div class="shrink-0 w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center border border-slate-200 group-hover:bg-cyan-50 group-hover:border-cyan-200 transition-all">
                                     <i class="fas <?php echo $guide['icon']; ?> text-slate-600 group-hover:text-cyan-600" style="font-size: 24px;"></i>
                                 </div>
@@ -195,7 +232,10 @@ $prefectures = get_yoruo_prefectures();
                             </div>
                         </div>
 
-                        <button type="submit" class="w-full gradient-cyan hover:brightness-110 text-white font-black py-5 rounded-2xl shadow-2xl shadow-cyan-500/30 transition-all active:scale-[0.98] text-lg flex items-center justify-center gap-3 mt-6">
+                        <!-- Selected Tags Container -->
+                        <div id="selected-tags-container" class="flex flex-wrap gap-2 pt-2 pb-1 empty:hidden mb-4"></div>
+
+                        <button type="submit" class="w-full gradient-cyan hover:brightness-110 text-white font-black py-5 rounded-2xl shadow-2xl shadow-cyan-500/30 transition-all active:scale-[0.98] text-lg flex items-center justify-center gap-3 mt-2">
                             <i class="fas fa-search"></i>
                             この条件で検索する
                         </button>
@@ -213,13 +253,13 @@ $prefectures = get_yoruo_prefectures();
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                         <?php
                         $featured_query = new WP_Query(array(
                             'post_type' => 'job',
                             'posts_per_page' => 4,
-                            'status' => 'publish'
+                            'post_status' => 'publish'
                         ));
 
                         if ($featured_query->have_posts()) :
@@ -274,7 +314,7 @@ $prefectures = get_yoruo_prefectures();
                     <!-- Target content -->
                 </div>
 
-                <button type="button" class="modal-close w-full mt-10 py-5 bg-slate-900 text-white font-black rounded-2xl shadow-xl shadow-slate-200 transition-all active:scale-95">
+                <button type="button" id="modal-submit-btn" class="w-full mt-10 py-5 bg-slate-900 text-white font-black rounded-2xl shadow-xl shadow-slate-200 transition-all active:scale-95">
                     選択した条件を確定する
                 </button>
             </div>
@@ -287,7 +327,7 @@ $prefectures = get_yoruo_prefectures();
     <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
         <?php foreach ($categories as $cat) : ?>
             <label class="cursor-pointer group">
-                <input type="checkbox" name="category[]" value="<?php echo esc_attr($cat['id']); ?>" class="peer sr-only modal-sync-input" data-target="category[]">
+                <input type="checkbox" name="category[]" value="<?php echo esc_attr($cat['id']); ?>" data-label="<?php echo esc_attr($cat['name']); ?>" class="peer sr-only modal-sync-input" data-target="category[]">
                 <span class="flex flex-col items-center justify-center gap-3 p-6 bg-slate-50 border border-slate-200 rounded-2xl peer-checked:bg-white peer-checked:border-indigo-500 peer-checked:shadow-lg peer-checked:shadow-indigo-500/10 group-hover:bg-white transition-all">
                     <i class="fas <?php echo $cat['icon']; ?> text-slate-400 peer-checked:text-indigo-600" style="font-size: 24px;"></i>
                     <span class="text-[10px] font-black text-slate-700 text-center leading-tight"><?php echo esc_html($cat['name']); ?></span>
@@ -301,7 +341,7 @@ $prefectures = get_yoruo_prefectures();
     <div class="grid grid-cols-1 gap-3">
         <?php foreach ($salary_options as $option) : ?>
             <label class="cursor-pointer group block">
-                <input type="radio" name="salary" value="<?php echo esc_attr($option['id']); ?>" class="peer sr-only modal-sync-input" data-target="salary">
+                <input type="radio" name="salary" value="<?php echo esc_attr($option['id']); ?>" data-label="<?php echo esc_attr($option['name']); ?>" class="peer sr-only modal-sync-input" data-target="salary">
                 <span class="flex items-center justify-between p-6 bg-slate-50 border border-slate-200 rounded-2xl peer-checked:bg-white peer-checked:border-emerald-500 peer-checked:shadow-lg peer-checked:shadow-emerald-500/10 group-hover:bg-white transition-all">
                     <div class="flex items-center gap-4">
                         <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 peer-checked:bg-emerald-50 peer-checked:text-emerald-500 transition-colors">
@@ -320,7 +360,7 @@ $prefectures = get_yoruo_prefectures();
     <div class="grid grid-cols-2 gap-3">
         <?php foreach ($work_styles as $style) : ?>
             <label class="cursor-pointer group block">
-                <input type="checkbox" name="style[]" value="<?php echo esc_attr($style['id']); ?>" class="peer sr-only modal-sync-input" data-target="style[]">
+                <input type="checkbox" name="style[]" value="<?php echo esc_attr($style['id']); ?>" data-label="<?php echo esc_attr($style['name']); ?>" class="peer sr-only modal-sync-input" data-target="style[]">
                 <span class="flex flex-col items-center justify-center gap-4 p-6 bg-slate-50 border border-slate-200 rounded-2xl peer-checked:bg-white peer-checked:border-blue-500 peer-checked:shadow-lg peer-checked:shadow-blue-500/10 group-hover:bg-white transition-all text-center">
                     <i class="fas <?php echo $style['icon']; ?> text-slate-400 peer-checked:text-blue-600" style="font-size: 24px;"></i>
                     <span class="text-xs font-black text-slate-700"><?php echo esc_html($style['name']); ?></span>

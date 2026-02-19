@@ -30,6 +30,12 @@
             <div class="flex items-center gap-3 md:gap-4">
                 <?php if ( is_user_logged_in() ) : ?>
                     <div class="flex items-center gap-3">
+                        <?php if (current_user_can('store_owner')) : ?>
+                            <a href="<?php echo esc_url( home_url( '/dashboard/' ) ); ?>" class="flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-600 text-white hover:bg-indigo-700 transition text-xs font-bold shadow-lg shadow-indigo-200">
+                                <i class="fas fa-store" style="font-size: 14px;"></i>
+                                <span class="hidden sm:inline">店舗管理</span>
+                            </a>
+                        <?php endif; ?>
                         <a href="<?php echo esc_url( home_url( '/profile/' ) ); ?>" class="flex items-center gap-2 px-4 py-2 rounded-full border border-slate-200 hover:bg-slate-50 transition text-xs font-bold text-slate-700">
                             <i class="fas fa-user text-cyan-500" style="font-size: 14px;"></i>
                             <span class="hidden sm:inline">マイページ</span>

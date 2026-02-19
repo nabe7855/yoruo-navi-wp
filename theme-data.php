@@ -4,22 +4,29 @@
  */
 
 function get_yoruo_categories() {
-    return [
-        ['name' => 'キャバクラ', 'icon' => 'fa-sparkles', 'count' => 124, 'id' => 'キャバクラ'],
-        ['name' => 'ガールズバー', 'icon' => 'fa-martini-glass-citrus', 'count' => 89, 'id' => 'ガールズバー'],
-        ['name' => 'スナック', 'icon' => 'fa-music', 'count' => 56, 'id' => 'スナック'],
-        ['name' => 'ラウンジ', 'icon' => 'fa-coffee', 'count' => 42, 'id' => 'ラウンジ'],
-        ['name' => 'ホストクラブ', 'icon' => 'fa-star', 'count' => 112, 'id' => 'ホストクラブ'],
-        ['name' => 'バー', 'icon' => 'fa-glass-martini', 'count' => 75, 'id' => 'バー'],
-        ['name' => 'クラブ', 'icon' => 'fa-music', 'count' => 34, 'id' => 'クラブ'],
-        ['name' => 'ニュークラブ', 'icon' => 'fa-sparkles', 'count' => 28, 'id' => 'ニュークラブ'],
-        ['name' => '黒服(ボーイ)', 'icon' => 'fa-users', 'count' => 156, 'id' => 'Boy'],
-        ['name' => '幹部候補', 'icon' => 'fa-trending-up', 'count' => 45, 'id' => 'Manager'],
-        ['name' => '送りドライバー', 'icon' => 'fa-car', 'count' => 67, 'id' => 'Driver'],
-        ['name' => 'キャッシャー', 'icon' => 'fa-coins', 'count' => 23, 'id' => 'Cashier'],
-        ['name' => 'キッチン', 'icon' => 'fa-utensils', 'count' => 18, 'id' => 'Kitchen'],
-        ['name' => 'ヘアメイク', 'icon' => 'fa-scissors', 'count' => 12, 'id' => 'HairMake'],
+    $categories = [
+        ['name' => 'キャバクラ', 'icon' => 'fa-gem', 'id' => 'キャバクラ'],
+        ['name' => 'ガールズバー', 'icon' => 'fa-martini-glass-citrus', 'id' => 'ガールズバー'],
+        ['name' => 'スナック', 'icon' => 'fa-music', 'id' => 'スナック'],
+        ['name' => 'ラウンジ', 'icon' => 'fa-coffee', 'id' => 'ラウンジ'],
+        ['name' => 'ホストクラブ', 'icon' => 'fa-star', 'id' => 'ホストクラブ'],
+        ['name' => 'バー', 'icon' => 'fa-glass-martini', 'id' => 'バー'],
+        ['name' => 'クラブ', 'icon' => 'fa-music', 'id' => 'クラブ'],
+        ['name' => 'ニュークラブ', 'icon' => 'fa-gem', 'id' => 'ニュークラブ'],
+        ['name' => '黒服(ボーイ)', 'icon' => 'fa-users', 'id' => 'Boy'],
+        ['name' => '幹部候補', 'icon' => 'fa-user-tie', 'id' => 'Manager'],
+        ['name' => '送りドライバー', 'icon' => 'fa-car', 'id' => 'Driver'],
+        ['name' => 'キャッシャー', 'icon' => 'fa-coins', 'id' => 'Cashier'],
+        ['name' => 'キッチン', 'icon' => 'fa-utensils', 'id' => 'Kitchen'],
+        ['name' => 'ヘアメイク', 'icon' => 'fa-scissors', 'id' => 'HairMake'],
     ];
+
+    foreach ($categories as &$cat) {
+        $term = get_term_by('name', $cat['name'], 'job_category');
+        $cat['count'] = $term ? $term->count : 0;
+    }
+
+    return $categories;
 }
 
 function get_yoruo_guides() {
@@ -32,6 +39,15 @@ function get_yoruo_guides() {
 
 function get_yoruo_quick_tags() {
     return ['日払いOK', '未経験歓迎', '経験者優遇', '送迎あり', '寮・社宅あり', '託児所あり', '自由シフト', '週1日からOK', '昇給随時', 'ノルマなし'];
+}
+
+function get_yoruo_feature_tags() {
+    return [
+        '経験・資格' => ['未経験歓迎', '経験者優遇', 'ブランクOK', '学生歓迎', 'フリーター歓迎', '副業・WワークOK'],
+        '待遇・福利厚生' => ['日払いOK', '週払いOK', '高額バックあり', '昇給随時', '賞与あり', '交通費支給', '送迎あり', '寮・社宅あり', '託児所あり', '社会保険完備', '社員登用あり'],
+        '働き方' => ['自由シフト', '週1日からOK', '1日3h以内OK', '土日祝のみOK', '平日のみOK', '夜からの仕事', '深夜・早朝の仕事', '短期間OK'],
+        '職場環境' => ['ノルマなし', 'ペナルティなし', 'ドレス・スーツ貸出', 'ヘアメイク完備', '履歴書不要', 'オンライン面接OK', 'ニューオープン', 'アットホーム']
+    ];
 }
 
 function get_yoruo_salary_options() {
